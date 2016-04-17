@@ -32,12 +32,11 @@ public class GWConfigHolder {
 
     private String name;
 
-    private InboundEndpoint inboundEndpoint;
+    private Map<String, Group> groups = new HashMap<>();
 
     private Map<String, Pipeline> pipelines = new HashMap<>();
 
     private Map<String, OutboundEndpoint> outboundEndpoints = new HashMap<>();
-
 
     public GWConfigHolder(String name) {
         this.name = name;
@@ -51,13 +50,12 @@ public class GWConfigHolder {
         this.name = name;
     }
 
-    public InboundEndpoint getInboundEndpoint() {
-        return inboundEndpoint;
+    public Group getGroup(String path) {
+        return groups.get(path);
     }
 
-    public void setInboundEndpoint(
-            InboundEndpoint inboundEndpoint) {
-        this.inboundEndpoint = inboundEndpoint;
+    public void addGroup(Group group) {
+        groups.put(group.getPath(), group);
     }
 
     public Pipeline getPipeline(String name) {
@@ -82,5 +80,9 @@ public class GWConfigHolder {
 
     public void addOutboundEndpoint(OutboundEndpoint outboundEndpoint) {
         outboundEndpoints.put(outboundEndpoint.getName(), outboundEndpoint);
+    }
+
+    public Map<String, Group> getGroups() {
+        return groups;
     }
 }

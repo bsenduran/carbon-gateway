@@ -84,9 +84,14 @@ public class ConfigRegistry {
     private void updateArtifacts(GWConfigHolder config) {
 
         //For Inbound Endpoint
-        InboundEndpoint inboundEndpoint = config.getInboundEndpoint();
-        if (inboundEndpoint != null) {
-            registerInboundEndpoint(inboundEndpoint);
+//        InboundEndpoint inboundEndpoint = config.getInboundEndpoint();
+//        if (inboundEndpoint != null) {
+//            registerInboundEndpoint(inboundEndpoint);
+//        }
+        for (Group group: config.getGroups().values()) {
+            if (group.getInboundEndpoint() != null) {
+                registerInboundEndpoint(group.getInboundEndpoint());
+            }
         }
 
         //For Pipelines
@@ -104,9 +109,15 @@ public class ConfigRegistry {
 
     private void unDeployArtifacts(GWConfigHolder configHolder) {
         //For Inbound Endpoint
-        InboundEndpoint inboundEndpoint = configHolder.getInboundEndpoint();
-        if (inboundEndpoint != null) {
-            unregisterInboundEndpoint(inboundEndpoint);
+//        InboundEndpoint inboundEndpoint = configHolder.getInboundEndpoint();
+//        if (inboundEndpoint != null) {
+//            unregisterInboundEndpoint(inboundEndpoint);
+//        }
+
+        for (Group group: configHolder.getGroups().values()) {
+            if (group.getInboundEndpoint() != null) {
+                unregisterInboundEndpoint(group.getInboundEndpoint());
+            }
         }
 
         //For Pipelines

@@ -19,6 +19,7 @@
 package org.wso2.carbon.gateway.core.config.dsl.internal.inbound;
 
 import org.wso2.carbon.gateway.core.config.GWConfigHolder;
+import org.wso2.carbon.gateway.core.config.Group;
 import org.wso2.carbon.gateway.core.config.dsl.internal.JavaConfigurationBuilder;
 import org.wso2.carbon.gateway.core.config.dsl.internal.flow.PipelineBuilder;
 import org.wso2.carbon.gateway.core.inbound.InboundEndpoint;
@@ -36,7 +37,9 @@ public class InboundEPBuilder {
                                                    JavaConfigurationBuilder.IntegrationFlow integrationFlow,
                                                    InboundEndpoint inboundEndpoint) {
         inboundEndpoint.setName(name);
-        parentConfig.setInboundEndpoint(inboundEndpoint);
+        Group group = parentConfig.getGroups().values().iterator().next();
+        group.setInboundEndpoint(inboundEndpoint);
+//        parentConfig.setInboundEndpoint(inboundEndpoint);
 
         return new InboundEPBuilder(parentConfig, integrationFlow);
     }
@@ -48,8 +51,9 @@ public class InboundEPBuilder {
     }
 
     public PipelineBuilder pipeline(String pipeline) {
-        if (parentConfig.getInboundEndpoint() != null) {
-            parentConfig.getInboundEndpoint().setPipeline(pipeline);
+        Group group = parentConfig.getGroups().values().iterator().next();
+        if(group != null && group.getInboundEndpoint() !=null){
+            group.getInboundEndpoint().setPipeline(pipeline);
         }
         return integrationFlow.pipeline(pipeline);
     }

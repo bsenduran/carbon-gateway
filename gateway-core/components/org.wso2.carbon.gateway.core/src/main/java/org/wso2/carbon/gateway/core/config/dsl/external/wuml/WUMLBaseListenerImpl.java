@@ -18,6 +18,7 @@
 package org.wso2.carbon.gateway.core.config.dsl.external.wuml;
 
 import org.antlr.v4.runtime.tree.TerminalNode;
+import org.wso2.carbon.gateway.core.config.Group;
 import org.wso2.carbon.gateway.core.config.Parameter;
 import org.wso2.carbon.gateway.core.config.ParameterHolder;
 import org.wso2.carbon.gateway.core.config.dsl.external.StringParserUtil;
@@ -55,6 +56,13 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
     boolean ifElseBlockStarted = false;
     Map<String, String> identifierTypeMap = new HashMap<>();
 
+
+    ParameterHolder baseInboundParameterHolder = new ParameterHolder();
+    String protocolName = "http";
+    Map<String, Group> subGroups = new HashMap<>();
+    private boolean inSubgroup = false;
+    private String basePath;
+
     public WUMLBaseListenerImpl() {
         this.integrationFlow = new WUMLConfigurationBuilder.IntegrationFlow("default");
     }
@@ -73,11 +81,6 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
     }
 
     @Override
-    public void exitHandler(WUMLParser.HandlerContext ctx) {
-        super.exitHandler(ctx);
-    }
-
-    @Override
     public void exitStatementList(WUMLParser.StatementListContext ctx) {
         super.exitStatementList(ctx);
     }
@@ -93,16 +96,11 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
     }
 
     @Override
-    public void exitIntegrationFlowDefStatement(WUMLParser.IntegrationFlowDefStatementContext ctx) {
-        //Create the integration flow when definition is found
-        integrationFlow = new WUMLConfigurationBuilder.IntegrationFlow(ctx.IDENTIFIER().getText());
-        super.exitIntegrationFlowDefStatement(ctx);
-    }
-
-    @Override
     public void exitTitleStatement(WUMLParser.TitleStatementContext ctx) {
         //Create the integration flow when definition is found
-        integrationFlow = new WUMLConfigurationBuilder.IntegrationFlow(ctx.IDENTIFIER().getText());
+        String integrationName = StringParserUtil
+                .getValueWithinDoubleQuotes(ctx.titleStatementDef().IDENTIFIER_STRINGX().getText());
+                integrationFlow = new WUMLConfigurationBuilder.IntegrationFlow(integrationName);
         super.exitTitleStatement(ctx);
     }
 
@@ -112,21 +110,14 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
         String protocolName = StringParserUtil.getValueWithinDoubleQuotes(ctx.inboundEndpointDef().
                 PROTOCOLDEF().getText());
 
-        ParameterHolder parameterHolder = new ParameterHolder();
-
         for (TerminalNode terminalNode : ctx.inboundEndpointDef().PARAMX()) {
             String keyValue = terminalNode.getSymbol().getText();
             String key = keyValue.substring(1, keyValue.indexOf("("));
             String value = keyValue.substring(keyValue.indexOf("\"") + 1, keyValue.lastIndexOf("\""));
 
-            parameterHolder.addParameter(new Parameter(key, value));
+            baseInboundParameterHolder.addParameter(new Parameter(key, value));
         }
 
-        InboundEndpoint inboundEndpoint = InboundEPProviderRegistry.getInstance().getProvider(protocolName)
-                .getInboundEndpoint();
-        inboundEndpoint.setParameters(parameterHolder);
-
-        integrationFlow.getGWConfigHolder().setInboundEndpoint(inboundEndpoint);
         super.exitInboundEndpointDefStatement(ctx);
     }
 
@@ -140,7 +131,7 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
     @Override
     public void exitOutboundEndpointDefStatement(WUMLParser.OutboundEndpointDefStatementContext ctx) {
         identifierTypeMap.put(ctx.IDENTIFIER().getText(), OUTBOUND);
-        String protocolName = StringParserUtil.getValueWithinDoubleQuotes(ctx.outboundEndpointDef().
+        protocolName = StringParserUtil.getValueWithinDoubleQuotes(ctx.outboundEndpointDef().
                 PROTOCOLDEF().getText());
 
         ParameterHolder parameterHolder = new ParameterHolder();
@@ -178,8 +169,8 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
     }
 
     @Override
-    public void exitIntegrationFlowDef(WUMLParser.IntegrationFlowDefContext ctx) {
-        super.exitIntegrationFlowDef(ctx);
+    public void enterTitleStatement(WUMLParser.TitleStatementContext ctx) {
+        super.enterTitleStatement(ctx);
     }
 
     @Override
@@ -298,11 +289,6 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
     }
 
     @Override
-    public void exitGroupStatement(WUMLParser.GroupStatementContext ctx) {
-        super.exitGroupStatement(ctx);
-    }
-
-    @Override
     public void exitLoopStatement(WUMLParser.LoopStatementContext ctx) {
         super.exitLoopStatement(ctx);
     }
@@ -311,11 +297,6 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
     public void exitRefStatement(WUMLParser.RefStatementContext ctx) {
         pipelineStack.push(ctx.IDENTIFIER().getText());
         super.exitRefStatement(ctx);
-    }
-
-    @Override
-    public void exitExpression(WUMLParser.ExpressionContext ctx) {
-        super.exitExpression(ctx);
     }
 
     @Override
@@ -344,7 +325,7 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
         String pipelineName = ctx.IDENTIFIER(1).getText();
         switch (identifierType) {
         case "invokeFromSource":
-            integrationFlow.getGWConfigHolder().getInboundEndpoint().setPipeline(pipelineName);
+            integrationFlow.getGWConfigHolder().getGroup(basePath).getInboundEndpoint().setPipeline(pipelineName);
             pipelineStack.push(pipelineName);
             break;
         case "invokeFromTarget":
@@ -387,5 +368,60 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
         }
 
         super.exitRoutingStatementDef(ctx);
+    }
+
+    @Override
+    public void exitGroupStatement(WUMLParser.GroupStatementContext ctx) {
+
+        super.exitGroupStatement(ctx);
+    }
+
+    @Override
+    public void exitGroupDefStatement(WUMLParser.GroupDefStatementContext ctx) {
+        String pathValueString = ctx.GROUP_PATH_DEF().getText().split("path=")[1];
+        basePath = StringParserUtil.getValueWithinDoubleQuotes(pathValueString.trim());
+
+        InboundEndpoint inboundEndpoint = InboundEPProviderRegistry.getInstance().getProvider(protocolName)
+                .getInboundEndpoint();
+        if(subGroups.isEmpty()) {
+            baseInboundParameterHolder.addParameter(new Parameter("context", basePath));
+
+            inboundEndpoint.setParameters(baseInboundParameterHolder);
+
+            Group group = new Group(basePath);
+            group.setInboundEndpoint(inboundEndpoint);
+
+            integrationFlow.getGWConfigHolder().addGroup(group);
+        } else {
+            for (Group group : subGroups.values()) {
+                baseInboundParameterHolder.addParameter(new Parameter("context", basePath + group.getPath()));
+                inboundEndpoint.setParameters(baseInboundParameterHolder);
+            }
+        }
+        super.exitGroupDefStatement(ctx);
+    }
+
+    @Override
+    public void exitSubGroupDefStatement(WUMLParser.SubGroupDefStatementContext ctx) {
+        String pathValueString = ctx.GROUP_PATH_DEF().getText().split("path=")[1];
+        String pathValue = StringParserUtil.getValueWithinDoubleQuotes(pathValueString.trim());
+
+//        Group group = new Group(pathValue);
+//        subGroups.put(pathValue, group);
+        super.exitSubGroupDefStatement(ctx);
+
+
+    }
+
+    @Override
+    public void exitSubGroupStatement(WUMLParser.SubGroupStatementContext ctx) {
+        inSubgroup = false;
+        super.exitSubGroupStatement(ctx);
+    }
+
+    @Override
+    public void enterSubGroupStatement(WUMLParser.SubGroupStatementContext ctx) {
+        inSubgroup = true;
+        super.exitSubGroupStatement(ctx);
     }
 }
