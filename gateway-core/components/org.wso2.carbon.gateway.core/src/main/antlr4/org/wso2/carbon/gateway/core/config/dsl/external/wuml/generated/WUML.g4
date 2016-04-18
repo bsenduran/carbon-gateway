@@ -19,6 +19,7 @@ statement
     : titleStatement
     | participantStatement
     | groupStatement
+    | messageflowStatementList
     | commentStatement;
 
 
@@ -53,7 +54,7 @@ outboundEndpointDef: OUTBOUNDENDPOINTX LPAREN PROTOCOLDEF PARAMX* RPAREN;
 
 
 groupStatement: groupDefStatement
-                (subGroupStatement+ | messageflowStatementList)
+                messageflowStatementList
                 END;
 
 groupDefStatement: GROUP WS+  GROUP_NAME_DEF WS*
@@ -66,13 +67,6 @@ GROUP_PATH_DEF: PATH WS* EQ_SYMBOL WS* URL_STRINGX;
 GROUP_SCHEME_DEF: SCHEME WS* EQ_SYMBOL WS* IDENTIFIER_STRINGX;
 GROUP_METHOD_DEF: METHOD WS* EQ_SYMBOL WS* IDENTIFIER_STRINGX;
 
-subGroupStatement: subGroupDefStatement
-                    messageflowStatementList
-                    END NEWLINE+;
-
-subGroupDefStatement: SUB_GROUP WS+ GROUP_PATH_DEF COMMA_SYMBOL
-                                      WS* GROUP_METHOD_DEF NEWLINE+;
-
 messageflowStatementList: (messageflowStatement NEWLINE+)*;
 
 messageflowStatement: routingStatement
@@ -80,7 +74,8 @@ messageflowStatement: routingStatement
                           | parallelStatement
                           | ifStatement
                           | loopStatement
-                          | refStatement;
+                          | refStatement
+                          | commentStatement;
 
 routingStatement: routingStatementDef;
 
@@ -184,7 +179,6 @@ EXPRESSIONX: EXPRESSION;
 CONDITIONX: CONDITION;
 END: E N D;
 GROUP: G R O U P;
-SUB_GROUP: 'sub-group';
 NAME: N A M E;
 PATH: P A T H;
 SCHEME: S C H E M E;
@@ -220,7 +214,7 @@ ANY_STRING: (IDENTIFIER|URL)+;
 
 PROTOCOLDEF:  PROTOCOL LPAREN IDENTIFIER_STRINGX RPAREN;
 
-fragment CONFIGPARAMS: (WS | [a-zA-Z\?] | COLON | [0-9] | '$' | '.' | '@' |
+fragment CONFIGPARAMS: (WS | [a-zA-Z]+? | COLON | [0-9] | '$' | '.' | '@' |
                         SINGLEQUOTES | DOUBLEQUOTES | '{' | '}' | AMP_SYMBOL |
                         AMPAMP_SYMBOL | CARET_SYMBOL | COMMA_SYMBOL |
                         COMMENT_SYMBOL | CONTINUATION_SYMBOL | EQ_SYMBOL |
